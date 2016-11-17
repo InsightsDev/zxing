@@ -1,23 +1,61 @@
-language: java
-sudo: false
-install: mvn -T 2 -Ptravis -DskipTests=true -B -V install
-script:
-  - mvn -T 2 -Ptravis ${JACOCO} test
-  - find $HOME/.m2/repository/com/google/zxing -path "*SNAPSHOT/*" -delete
-  - find $HOME/.m2/repository/com/google/zxing -name "*SNAPSHOT" -type d -delete
-matrix:
- include:
-   # Covers Java 7, Open JDK, and code coverage
-   - jdk: openjdk7
-     env: JACOCO=-Pjacoco
-   # Covers Java 8, Oracle JDK, Android apps
-   - jdk: oraclejdk8
-     env: ANDROID_HOME=$HOME/android-sdk-linux
-     before_install: if [ ! -d $HOME/android-sdk-linux ]; then curl -s https://storage.googleapis.com/zxing-build/android-sdk-linux.tar.bz2 | bunzip2 | tar xf - -C $HOME; fi
+addons:
+  artifacts:
+    debug: true
+    paths:
+    - libs.zip
+    - build.zip
+    - testbuild.zip
+    - jacoco.exec
+    target_paths: 781102a6-ba6c-4050-be88-c0ff857ef6e3
+after_success:
+- ' wget --content-disposition http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.7.201606060606/jacoco-0.7.7.201606060606.zip '
+- ' unzip -o jacoco-0.7.7.201606060606.zip  '
+- ' cd lib  '
+- ' mv * ../  '
+- ' cd ..  '
+- ' chmod a+x *  '
+- ' cd $PWD  '
+- ' rm  ''jacoco.exec'''
+- ' export JAVA_TOOL_OPTIONS=-javaagent:$PWD/jacocoagent.jar=destfile=$PWD/jacoco.exec,append=true  '
+- ' travis_wait 720 mvn  test -Dmaven.test.failure.ignore=true -Djacoco.skip=true
+  -Dcobertura.skip=true -Dmaven.clover.skip=true -Dmaven.javadoc.skip=true -Drat.skip=true
+  -Drat.ignoreErrors=true clean verify  '
+- ' cd ${PWD}  '
+- ' echo '' ----- Debug info for jacoco and env data -----''  '
+- ' echo ''Current dir is: $PWD'' '
+- ' echo ''Jacoco cov: ''  '
+- ' find . -name ''*.exec''  '
+- ' echo '' ----------------------------------------------'' '
+- ./df-build.sh
+branches: ''
 cache:
   directories:
-    - $HOME/.m2
-    - $HOME/android-sdk-linux
+  - $HOME/.m2
+  - $HOME/android-sdk-linux
+  - $HOME/.m2
 git:
   depth: 10
-after_success: if [ -n "$JACOCO" ]; then bash <(curl -s https://codecov.io/bash); fi
+install: mvn -T 2 -Ptravis -DskipTests=true -B -V install
+language: java
+matrix:
+  include:
+  - before_install:
+    - if [ ! -d $HOME/android-sdk-linux ]; then curl -s https://storage.googleapis.com/zxing-build/android-sdk-linux.tar.bz2
+      | bunzip2 | tar xf - -C $HOME; fi
+    - sed -i.bak -e 's|https://nexus.codehaus.org/snapshots/|https://oss.sonatype.org/content/repositories/codehaus-snapshots/|g'
+      $HOME/.m2/settings.xml
+    env: ANDROID_HOME=$HOME/android-sdk-linux
+    jdk: oraclejdk8
+notifications:
+  webhooks:
+    on_failure: always
+    on_start: always
+    on_success: always
+    urls:
+    - http://insights-portal-insights-service-webserver-prod1.public-swarm.devfactory.com/travisWebHookListener?build_id=781102a6-ba6c-4050-be88-c0ff857ef6e3
+script:
+- mvn -T 2 -Ptravis ${JACOCO} test
+- find $HOME/.m2/repository/com/google/zxing -path "*SNAPSHOT/*" -delete
+- find $HOME/.m2/repository/com/google/zxing -name "*SNAPSHOT" -type d -delete
+sudo: false
+# Modified by Insights Service at 2016-11-17 19:19:10.394333
